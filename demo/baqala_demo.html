@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>بقالة — Baqala Demo</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,'Segoe UI',Tahoma,sans-serif;background:#0b141a;color:#e9edef;overflow:hidden;height:100vh}
+.container{display:flex;height:100vh}
+.phone{width:50%;display:flex;flex-direction:column;border-left:1px solid #222d35;position:relative}
+.phone:first-child{border-left:none}
+.phone-header{background:#1f2c34;padding:10px 16px;display:flex;align-items:center;gap:10px;min-height:60px}
+.phone-header .avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px}
+.phone-header .name{font-size:16px;font-weight:600}
+.phone-header .status{font-size:12px;color:#8696a0}
+.label{position:absolute;top:0;left:0;right:0;background:linear-gradient(135deg,#00a884,#008f72);color:white;text-align:center;padding:4px;font-size:11px;font-weight:600;letter-spacing:1px;z-index:10}
+.chat{flex:1;overflow-y:auto;padding:60px 16px 16px;display:flex;flex-direction:column;gap:4px;background:#060d11}
+.msg{max-width:80%;padding:6px 8px;border-radius:8px;font-size:14px;line-height:1.5;animation:fadeIn .3s ease;word-wrap:break-word;white-space:pre-wrap}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.msg.in{background:#1f2c34;align-self:flex-start;border-top-right-radius:0}
+.msg.out{background:#005c4b;align-self:flex-end;border-top-left-radius:0}
+.msg .time{font-size:11px;color:#8696a0;float:left;margin-top:4px;margin-right:8px}
+.msg.out .time{color:#a0c4b8}
+.system-msg{text-align:center;font-size:12px;color:#8696a0;background:#1f2c34;padding:4px 12px;border-radius:8px;align-self:center}
+.controls{background:#1f2c34;padding:12px 16px;display:flex;gap:8px;align-items:center;position:fixed;bottom:0;left:0;right:0;z-index:50}
+.play-btn{background:#00a884;color:white;border:none;padding:10px 20px;border-radius:24px;font-size:14px;cursor:pointer;font-weight:600;transition:all .2s}
+.play-btn:hover{background:#00c49a}
+.play-btn:disabled{background:#2a3942;color:#8696a0;cursor:not-allowed}
+.speed-btn{background:#2a3942;color:#8696a0;border:none;padding:6px 12px;border-radius:16px;font-size:12px;cursor:pointer}
+.speed-btn.active{background:#005c4b;color:#e9edef}
+.scene-label{flex:1;text-align:right;color:#00a884;font-weight:600;font-size:13px}
+.title-screen{position:fixed;inset:0;background:linear-gradient(135deg,#111b21,#0b141a);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;transition:opacity .5s}
+.title-screen.hidden{opacity:0;pointer-events:none}
+.title-screen h1{font-size:64px;margin-bottom:8px}
+.title-screen h2{font-size:28px;color:#00a884;font-weight:400;margin-bottom:4px}
+.title-screen h3{font-size:18px;color:#8696a0;font-weight:400;margin-bottom:32px}
+.title-screen .sub{font-size:14px;color:#8696a0;margin-bottom:24px;max-width:500px;text-align:center;line-height:1.6}
+.title-screen .stack{font-size:12px;color:#5a6a73;margin-bottom:20px;letter-spacing:.5px}
+.start-btn{background:#00a884;color:white;border:none;padding:16px 48px;border-radius:32px;font-size:18px;cursor:pointer;font-weight:600;transition:all .3s}
+.start-btn:hover{background:#00c49a;transform:scale(1.05)}
+.auto-btn{background:#2a3942;color:#e9edef;border:none;padding:10px 20px;border-radius:24px;font-size:14px;cursor:pointer;font-weight:600}
+.auto-btn.running{background:#005c4b}
+</style>
+</head>
+<body>
+<div class="title-screen" id="titleScreen">
+  <h1>🛒</h1>
+  <h2>بقالة — Baqala</h2>
+  <h3>WhatsApp AI for Iraqi Grocery Merchants</h3>
+  <p class="sub">Watch how a neighborhood بقالة in Baghdad uses an AI assistant to handle orders, refusals, delivery tracking, and daily ops — all on WhatsApp.<br><br>No app. No dashboard. Just WhatsApp. Iraqi Arabic + Arabizi. $0/month.</p>
+  <p class="stack">Gemini 2.0 Flash · Groq Whisper · Supabase · Boxy Delivery</p>
+  <button class="start-btn" onclick="startDemo()">▶ ابدأ العرض — Start Demo</button>
+</div>
+<div class="container" id="mainDemo" style="display:none">
+  <div class="phone">
+    <div class="label">📱 CUSTOMER — زبون</div>
+    <div class="phone-header">
+      <div class="avatar" style="background:#00a884">🛒</div>
+      <div><div class="name">بقالة أبو حسن</div><div class="status">متصل الآن</div></div>
+    </div>
+    <div class="chat" id="cChat"></div>
+  </div>
+  <div class="phone">
+    <div class="label">📱 MERCHANT — صاحب البقالة</div>
+    <div class="phone-header">
+      <div class="avatar" style="background:#128c7e">🤖</div>
+      <div><div class="name">بقالة — لوحة التحكم</div><div class="status">مساعد ذكي</div></div>
+    </div>
+    <div class="chat" id="mChat"></div>
+  </div>
+</div>
+<div class="controls" id="controls" style="display:none">
+  <div class="scene-label" id="sceneLabel"></div>
+  <button class="speed-btn active" onclick="setSpd(1,this)">1x</button>
+  <button class="speed-btn" onclick="setSpd(2,this)">2x</button>
+  <button class="speed-btn" onclick="setSpd(4,this)">4x</button>
+  <button class="auto-btn" id="autoBtn" onclick="toggleAuto()">▶ Auto</button>
+  <button class="play-btn" id="nextBtn" onclick="nextStep()">التالي ▶</button>
+</div>
+<script>
+let spd=1,step=0,autoMode=false,autoTimer=null;
+const t=()=>{const d=new Date();return d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')};
+function setSpd(s,el){spd=s;document.querySelectorAll('.speed-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active')}
+function msg(id,type,text,dl=0){return new Promise(r=>{setTimeout(()=>{const c=document.getElementById(id),d=document.createElement('div');d.className='msg '+type;d.innerHTML=text+`<span class="time">${t()}</span>`;c.appendChild(d);c.scrollTop=c.scrollHeight;r()},dl/spd)})}
+function sys(id,text,dl=0){return new Promise(r=>{setTimeout(()=>{const c=document.getElementById(id),d=document.createElement('div');d.className='system-msg';d.textContent=text;c.appendChild(d);c.scrollTop=c.scrollHeight;r()},dl/spd)})}
+
+const scenes=[
+// 1: Merchant onboarding via voice
+async()=>{
+  document.getElementById('sceneLabel').textContent='١ — تسجيل البقالة بالصوت | Voice Onboarding';
+  await sys('mChat','🟢 مرحباً ببقالة! ابعث صوتية بالمنتجات والأسعار',500);
+  await msg('mChat','out','🎤 ◀━━━━━━━━━━━━━━━ 0:12\n"عدي طماطة الكيلو 2500، بطاطا 1500، دجاج 12 الف، رز عنبر 5 كيلو 15 الف، بيض الكارتون 6 آلاف، حليب 2000"',1500);
+  await sys('mChat','🔄 Groq Whisper → نسخ الصوتية...',800);
+  await sys('mChat','🔄 Gemini 2.0 Flash → استخراج المنتجات...',800);
+  await msg('mChat','in','🤖 تمام! ضفت 6 منتج:\n\n✅ طماطة — 2,500 د/كيلو\n✅ بطاطا — 1,500 د/كيلو\n✅ دجاج — 12,000 د/حبة\n✅ رز عنبر 5kg — 15,000 د/باكيت\n✅ بيض — 6,000 د/كارتون\n✅ حليب — 2,000 د/علبة\n\nزين هيچي؟',1500);
+  await msg('mChat','out','زين 👍',800);
+  await msg('mChat','in','🤖 خوش! الكتالوج جاهز ✅\nحط هالرابط بالبايو مالتك:\nwa.me/964xxxxxxxxxx',1200);
+},
+// 2: AI generates missing product images
+async()=>{
+  document.getElementById('sceneLabel').textContent='٢ — الذكاء يصنع صور المنتجات | AI Catalog Images';
+  await msg('mChat','in','🤖 لاحظت ما عدك صور للمنتجات.\nأكدر أصنع صور احترافية بالذكاء الاصطناعي — مجاناً!\nأبدأ؟',1000);
+  await msg('mChat','out','ابدأ',800);
+  await sys('mChat','🎨 Gemini Image → generating طماطة...',1000);
+  await msg('mChat','in','🤖 🍅 صورة الطماطة جاهزة!\n[صورة: طماطة حمراء طازجة على خلفية بيضاء]\n\nأكمل الباقي؟',1500);
+  await msg('mChat','out','اي كمل كلهن',600);
+  await sys('mChat','🎨 Generating 5 more product images...',1200);
+  await msg('mChat','in','🤖 تمام! صنعت صور لكل المنتجات ✅\n🍅 طماطة ✓  🥔 بطاطا ✓  🍗 دجاج ✓\n🍚 رز عنبر ✓  🥚 بيض ✓  🥛 حليب ✓\n\nالحين لمن زبون يسأل، أرسله الصورة مع السعر',1500);
+},
+// 3: Customer orders in Arabic
+async()=>{
+  document.getElementById('sceneLabel').textContent='٣ — زبون يطلب بالعربي | Arabic Order';
+  await msg('cChat','out','هلا',800);
+  await msg('cChat','in','🤖 هلا وغلا حبيبي! 👋\nأنا مساعد بقالة أبو حسن.\nشنو تحتاج اليوم؟',1500);
+  await msg('cChat','out','ابي 3 كيلو طماطة و 2 كيلو بطاطا وكارتون بيض',1200);
+  await msg('cChat','in','🤖 🛒 طلبك حبيبي:\n\n🍅 طماطة x3 كيلو — 7,500 د\n🥔 بطاطا x2 كيلو — 3,000 د\n🥚 بيض x1 كارتون — 6,000 د\n\n💰 المجموع: 16,500 دينار\n💵 كاش عند الاستلام\n\nشنو اسمك وعنوانك؟',2000);
+  await msg('cChat','out','أحمد، زيونة قرب جامع الرحمن',1000);
+  await msg('cChat','in','🤖 تمام يا أحمد! ✅\nأرسلت الطلب لأبو حسن.\nالتوصيل خلال ساعة إن شاء الله 🚗',1500);
+  await msg('mChat','in','🔔 طلب جديد #a3f8!\n👤 أحمد — 📍 زيونة، قرب جامع الرحمن\n🍅 طماطة x3 | 🥔 بطاطا x2 | 🥚 بيض x1\n💰 16,500 د\n🚚 تم إرساله للسائق',1200);
+},
+// 4: Customer orders in Arabizi
+async()=>{
+  document.getElementById('sceneLabel').textContent='٤ — زبون يكتب بالعربيزي | Arabizi Order';
+  await msg('cChat','out','hala',800);
+  await msg('cChat','in','🤖 هلا وغلا عيوني! 👋\nشنو تحتاج من البقالة؟',1200);
+  await msg('cChat','out','abiha dijaj 2 w ruz wahid',1000);
+  await sys('cChat','🔄 Arabizi → أبيها دجاج ٢ ورز واحد',600);
+  await msg('cChat','in','🤖 🛒 طلبك:\n🍗 دجاج x2 — 24,000 د\n🍚 رز عنبر x1 — 15,000 د\n💰 المجموع: 39,000 دينار\n\nشنو اسمك وعنوانك؟',1800);
+  await msg('cChat','out','sara, mansour grb jam3 al nida2',1000);
+  await msg('cChat','in','🤖 تمام يا سارة! ✅\n📍 المنصور، قرب جامع النداء\nالتوصيل خلال ساعة 🚗',1500);
+},
+// 5: Order status commands — refuse / partial / delivered
+async()=>{
+  document.getElementById('sceneLabel').textContent='٥ — حالة الطلب: رفض / جزئي / تسليم | Order Status Commands';
+  await msg('mChat','in','🔔 طلب جديد #b7c2!\n👤 سارة — 📍 المنصور\n🍗 دجاج x2 | 🍚 رز x1\n💰 39,000 د',800);
+  await sys('mChat','— السائق وصل لسارة —',1200);
+  await msg('mChat','out','رفض b7c2',1000);
+  await msg('mChat','in','🤖 ❌ طلب #b7c2 — تم تسجيل رفض كامل\n📦 المنتجات رجعت للمخزون\n👤 سارة: رفض #1\n⚠️ بعد 3 رفضات، الذكاء يطلب تأكيد إضافي',1500);
+  await sys('cChat','📩 رسالة تلقائية لسارة',600);
+  await msg('cChat','in','🤖 مرحبا سارة، للأسف طلبك #b7c2 تم إلغاؤه.\nإذا تحتاجين شي ثاني، راسلينا! 🛒',1200);
+  await sys('mChat','— طلب آخر: أحمد يستلم جزئي —',1500);
+  await msg('mChat','out','جزئي a3f8',1000);
+  await msg('mChat','in','🤖 📝 طلب #a3f8 — تم تسجيل استلام جزئي\nالسائق يجمع المبلغ المعدّل\n📦 المرتجعات رجعت للمخزون',1200);
+  await sys('mChat','— طلب ثالث: تسليم ناجح —',1200);
+  await msg('mChat','out','وصل c9d1',1000);
+  await msg('mChat','in','🤖 ✅ طلب #c9d1 — تم التسليم بنجاح!\n💰 المبلغ: 22,000 د (كاش)',1000);
+},
+// 6: Refusal handling — repeat offender
+async()=>{
+  document.getElementById('sceneLabel').textContent='٦ — معالجة الرفض المتكرر | Repeat Refusal Handling';
+  await sys('cChat','— زبون عنده 3 رفضات سابقة —',800);
+  await msg('cChat','out','ابي دجاج 3 وبيض',1000);
+  await msg('cChat','in','🤖 ⚠️ حبيبي، لاحظنا إنك رفضت 3 طلبات سابقة.\nللتأكيد — طلبك:\n🍗 دجاج x3 — 36,000 د\n🥚 بيض x1 — 6,000 د\n💰 المجموع: 42,000 دينار\n\nمتأكد تريد تطلب؟ اكتب "نعم" للتأكيد',1800);
+  await msg('cChat','out','نعم',800);
+  await msg('cChat','in','🤖 تمام! ✅ الطلب مؤكد.\nالتوصيل خلال ساعة 🚗\nملاحظة: الرجاء التأكد من التواجد عند الاستلام 🙏',1500);
+  await msg('mChat','in','🔔 طلب جديد #e4f5!\n⚠️ تنبيه: هذا الزبون عنده 3 رفضات سابقة\n👤 خالد — 📍 الكرادة\n🍗 دجاج x3 | 🥚 بيض x1\n💰 42,000 د',1200);
+},
+// 7: Stock management
+async()=>{
+  document.getElementById('sceneLabel').textContent='٧ — إدارة المخزون | Stock Management';
+  await msg('mChat','out','خلصت الطماطة',1200);
+  await msg('mChat','in','🤖 ✅ شلت "طماطة" من المتوفر.\nالزباين راح يعرفون إنها نفذت.',1000);
+  await msg('mChat','out','رجعت الطماطة 3000',1200);
+  await msg('mChat','in','🤖 ✅ رجعت "طماطة" بسعر 3,000 د/كيلو',1000);
+  await msg('mChat','out','طلبات',800);
+  await msg('mChat','in','🤖 📋 طلبات اليوم:\n#a3f8 أحمد — جزئي — 16,500 د\n#b7c2 سارة — مرفوض — 39,000 د\n#c9d1 فاطمة — تم التسليم — 22,000 د\n#e4f5 خالد — قيد التوصيل — 42,000 د',1500);
+},
+// 8: Daily summary with refusal stats
+async()=>{
+  document.getElementById('sceneLabel').textContent='٨ — ملخص نهاية اليوم | Daily Summary + Refusal Stats';
+  await msg('mChat','in','🤖 مساء الخير 🌙\n\n📊 ملخص اليوم:\n🛒 47 طلب\n✅ 38 تم التسليم\n❌ 5 مرفوض (10.6%)\n📝 4 جزئي\n💰 892,500 دينار (مسلّم)\n\n🏆 الأكثر طلباً:\n1. دجاج (23)\n2. طماطة (19)\n3. رز عنبر (15)\n\n⚠️ نسبة الرفض 10.6% — أعلى من المعدل\n💡 الطماطة نفذت 3 مرات — فكر تزيد الكمية بكرة\n💡 خالد (3 رفضات) — راقب طلباته الجاية\n\nيلا نكمل بكرة إن شاء الله 💪',2000);
+  await sys('mChat','— نهاية العرض | End of Demo —',1500);
+  await sys('cChat','— نهاية العرض | End of Demo —',500);
+}];
+
+function startDemo(){document.getElementById('titleScreen').classList.add('hidden');setTimeout(()=>{document.getElementById('mainDemo').style.display='flex';document.getElementById('controls').style.display='flex'},500)}
+function toggleAuto(){autoMode=!autoMode;const b=document.getElementById('autoBtn');if(autoMode){b.textContent='⏸ Pause';b.classList.add('running');runAuto()}else{b.textContent='▶ Auto';b.classList.remove('running');clearTimeout(autoTimer)}}
+async function runAuto(){if(!autoMode||step>=scenes.length)return toggleAuto();await nextStep();autoTimer=setTimeout(runAuto,2000/spd)}
+async function nextStep(){if(step>=scenes.length){document.getElementById('nextBtn').disabled=true;document.getElementById('nextBtn').textContent='انتهى ✅';return}document.getElementById('nextBtn').disabled=true;await scenes[step]();step++;document.getElementById('nextBtn').disabled=false;if(step>=scenes.length){document.getElementById('nextBtn').textContent='انتهى ✅';document.getElementById('nextBtn').disabled=true}}
+</script>
+</body>
+</html>

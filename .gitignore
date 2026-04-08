@@ -1,0 +1,6 @@
+node_modules/
+.env
+baqala.db
+*.db
+*-SEA-*.js
+*-SEA-*.json
